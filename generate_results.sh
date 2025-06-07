@@ -63,10 +63,10 @@ for ((i=0; i<total_cases; i++)); do
     if [ $((i % 100)) -eq 0 ] && [ $i -gt 0 ]; then
         echo "Progress: $i/$total_cases cases processed..." >&2
     fi
-    
+
     # Extract test case data from pre-loaded array
     IFS=':' read -r trip_duration miles_traveled receipts_amount <<< "${test_cases[i]}"
-    
+
     # Run the user's implementation
     if script_output=$(./run.sh "$trip_duration" "$miles_traveled" "$receipts_amount" 2>/dev/null); then
         # Check if output is a valid number
@@ -99,7 +99,7 @@ echo "  4. Submit your private_results.txt file when ready!"
 echo
 echo "📈 File format:"
 echo "  Line 1: Result for private_cases.json[0]"
-echo "  Line 2: Result for private_cases.json[1]" 
+echo "  Line 2: Result for private_cases.json[1]"
 echo "  Line 3: Result for private_cases.json[2]"
 echo "  ..."
-echo "  Line N: Result for private_cases.json[N-1]" 
+echo "  Line N: Result for private_cases.json[N-1]"

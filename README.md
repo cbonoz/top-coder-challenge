@@ -122,7 +122,7 @@ To calculate reimbursement for specific inputs, use:
 
 ## Note
 
-It was a lot of fun working on this challenge! The process of reverse-engineering the legacy system and incorporating insights from interviews and historical data was both engaging and rewarding.
+Had a couple hours to prototype something and it was fun working on this challenge! The process of reverse-engineering the legacy system and incorporating insights from interviews and historical data was an interesting constraint.
 
 ---
 
