@@ -33,7 +33,7 @@ The system takes three inputs:
 
 ## Getting Started
 
-1. **Analyze the data**: 
+1. **Analyze the data**:
    - Look at `public_cases.json` to understand patterns
    - Look at `PRD.md` to understand the business problem
    - Look at `INTERVIEWS.md` to understand the business logic
@@ -41,7 +41,7 @@ The system takes three inputs:
    - Copy `run.sh.template` to `run.sh`
    - Implement your calculation logic
    - Make sure it outputs just the reimbursement amount
-3. **Test your solution**: 
+3. **Test your solution**:
    - Run `./eval.sh` to see how you're doing
    - Use the feedback to improve your algorithm
 4. **Submit**:
@@ -84,6 +84,45 @@ When you're ready to submit:
 2. Add `arjun-krishna1` to your repository
 3. Submit via the [submission form](https://forms.gle/sKFBV2sFo2ADMcRt8).
 4. When you submit the form you will submit your `private_results.txt` which will be used for your final score.
+
+## Current Implementation
+
+The current implementation uses a Random Forest model trained on the provided `public_cases.json` dataset. The model incorporates feature engineering based on insights from the interviews and PRD. Key features include:
+
+- **Miles per Day**: Captures efficiency by dividing total miles traveled by trip duration.
+- **Trip Length Indicators**: Flags for 5-day trips (bonus) and trips longer than 7 days (penalty).
+- **Receipt Efficiency**: Measures spending per day by dividing total receipts by trip duration.
+- **Receipt Thresholds**: Flags for high receipts (above $800) and low receipts (below $50).
+- **Rounding Bonus**: Adds a bonus for receipt amounts ending in `.49` or `.99`.
+
+### Workflow
+
+1. **Feature Engineering**: Enhances the input data with derived features to better capture the patterns observed in the legacy system.
+2. **Model Training**: A Random Forest model is trained on the enhanced dataset and saved as a pickled file (`reimbursement_model.pkl`) for reuse.
+3. **Prediction**: The model predicts reimbursement amounts using the engineered features.
+4. **Evaluation**: Cross-validation and R² metrics are used to assess model performance. Visualizations include:
+   - Actual vs Predicted Reimbursement Amounts (scatter plot)
+   - R² Line for ideal fit comparison
+
+### Key Benefits
+
+- **Reusability**: The pickled model ensures faster predictions without retraining.
+- **Transparency**: Feature engineering aligns with observed patterns and employee insights.
+- **Scalability**: The implementation handles all 1,000 test cases efficiently.
+
+To train the model and evaluate its performance, run:
+```bash
+./run.sh train
+```
+
+To calculate reimbursement for specific inputs, use:
+```bash
+./run.sh <trip_duration_days> <miles_traveled> <total_receipts_amount>
+```
+
+## Note
+
+It was a lot of fun working on this challenge! The process of reverse-engineering the legacy system and incorporating insights from interviews and historical data was both engaging and rewarding.
 
 ---
 

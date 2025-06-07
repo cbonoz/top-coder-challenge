@@ -12,34 +12,82 @@ import os
 with open('public_cases.json', 'r') as f:
     data = json.load(f)
 
-# Prepare training data
-X = pd.DataFrame([{
-    'trip_duration_days': case['input']['trip_duration_days'],
-    'miles_traveled': case['input']['miles_traveled'],
-    'total_receipts_amount': case['input']['total_receipts_amount']
-} for case in data])
+# Feature engineering function
+def feature_engineering(trip_duration_days, miles_traveled, total_receipts_amount):
+    """
+    Enhance input features based on insights from interviews and PRD.
+
+    Parameters:
+        trip_duration_days (int): Number of days spent traveling.
+        miles_traveled (float): Total miles traveled.
+        total_receipts_amount (float): Total dollar amount of submitted receipts.
+
+    Returns:
+        dict: Enhanced feature set.
+    """
+    # Base features
+    features = {
+        'trip_duration_days': trip_duration_days,
+        'miles_traveled': miles_traveled,
+        'total_receipts_amount': total_receipts_amount
+    }
+
+    # Add derived features based on interviews and PRD
+    features['miles_per_day'] = miles_traveled / trip_duration_days if trip_duration_days > 0 else 0
+    features['is_five_day_trip'] = 1 if trip_duration_days == 5 else 0
+    features['is_long_trip'] = 1 if trip_duration_days > 7 else 0
+    features['receipt_efficiency'] = total_receipts_amount / trip_duration_days if trip_duration_days > 0 else 0
+    features['is_high_receipt'] = 1 if total_receipts_amount > 800 else 0
+    features['is_low_receipt'] = 1 if total_receipts_amount < 50 else 0
+    features['rounding_bonus'] = 1 if total_receipts_amount % 1 in [0.49, 0.99] else 0
+
+    return features
+
+# Prepare training data with feature engineering
+X = pd.DataFrame([feature_engineering(
+    case['input']['trip_duration_days'],
+    case['input']['miles_traveled'],
+    case['input']['total_receipts_amount']
+) for case in data])
 y = pd.Series([case['expected_output'] for case in data])
 
 # Split data into training and validation sets
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# Save the trained model to a file
+# Check if the pickled model exists and matches the current feature set
 model_filename = 'reimbursement_model.pkl'
-try:
-    with open(model_filename, 'rb') as file:
-        model = pickle.load(file)
-        print("Loaded pre-trained model from file.")
-except FileNotFoundError:
-    print("No pre-trained model found. Training a new model...")
+feature_set_filename = 'feature_set.json'
+
+# Save the current feature set for validation
+current_features = list(feature_engineering(1, 1, 1).keys())
+
+# Check if the model and feature set exist
+retrain_model = False
+if os.path.exists(model_filename) and os.path.exists(feature_set_filename):
+    with open(feature_set_filename, 'r') as f:
+        saved_features = json.load(f)
+    if saved_features != current_features:
+        print("Feature set has changed. Retraining the model...")
+        retrain_model = True
+else:
+    print("Model or feature set not found. Training a new model...")
+    retrain_model = True
+
+if retrain_model:
     model = RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
     with open(model_filename, 'wb') as file:
         pickle.dump(model, file)
-        print("Saved trained model to file.")
+    with open(feature_set_filename, 'w') as f:
+        json.dump(current_features, f)
+    print("Model and feature set saved.")
+else:
+    with open(model_filename, 'rb') as file:
+        model = pickle.load(file)
 
 def calculate_reimbursement(trip_duration_days, miles_traveled, total_receipts_amount):
     """
-    Predict reimbursement using the trained Random Forest model.
+    Predict reimbursement using the trained Random Forest model with enhanced features.
 
     Parameters:
         trip_duration_days (int): Number of days spent traveling.
@@ -49,11 +97,7 @@ def calculate_reimbursement(trip_duration_days, miles_traveled, total_receipts_a
     Returns:
         float: Predicted reimbursement amount.
     """
-    input_features = pd.DataFrame([{
-        'trip_duration_days': trip_duration_days,
-        'miles_traveled': miles_traveled,
-        'total_receipts_amount': total_receipts_amount
-    }])
+    input_features = pd.DataFrame([feature_engineering(trip_duration_days, miles_traveled, total_receipts_amount)])
     predicted_reimbursement = model.predict(input_features)[0]
     return round(predicted_reimbursement, 2)
 
@@ -88,7 +132,7 @@ def train_and_evaluate_model():
     plt.figure(figsize=(10, 6))
     plt.scatter(y_val, predictions, color='blue', alpha=0.6, label='Actual vs Predicted')
     plt.plot([y_val.min(), y_val.max()], [y_val.min(), y_val.max()], color='red', linewidth=2, label='Ideal Fit (R² Line)')
-    plt.title('Actual vs Predicted Reimbursement Amounts')
+    plt.title(f'Actual vs Predicted Reimbursement Amounts (R² = {r2:.2f})')
     plt.xlabel('Actual Reimbursement Amount')
     plt.ylabel('Predicted Reimbursement Amount')
     plt.legend()
@@ -97,8 +141,14 @@ def train_and_evaluate_model():
 
 if __name__ == "__main__":
     if len(sys.argv) == 2 and sys.argv[1] == "--train":
+        print("Performing cross-validation on training data...")
         train_and_evaluate_model()
         sys.exit(0)
+
+    # Suppress model loading message during prediction
+    if len(sys.argv) == 4:
+        with open(model_filename, 'rb') as file:
+            model = pickle.load(file)
 
     if len(sys.argv) != 4:
         print("Usage: python3 calculate_reimbursement.py <trip_duration_days> <miles_traveled> <total_receipts_amount>")

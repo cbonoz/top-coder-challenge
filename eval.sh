@@ -77,44 +77,44 @@ for ((i=0; i<num_cases; i++)); do
     if [ $((i % 100)) -eq 0 ]; then
         echo "Progress: $i/$num_cases cases processed..." >&2
     fi
-    
+
     # Extract test case data from pre-loaded array
     IFS=':' read -r trip_duration miles_traveled receipts_amount expected <<< "${test_cases[i]}"
-    
+
     # Run the user's implementation
     if script_output=$(./run.sh "$trip_duration" "$miles_traveled" "$receipts_amount" 2>/dev/null); then
         # Check if output is a valid number
         output=$(echo "$script_output" | tr -d '[:space:]')
         if [[ $output =~ ^-?[0-9]+\.?[0-9]*$ ]]; then
             actual="$output"
-            
+
             # Calculate absolute error using bc
             error=$(echo "scale=10; if ($actual - $expected < 0) -1 * ($actual - $expected) else ($actual - $expected)" | bc)
-            
+
             # Store result in memory array
             results_array+=("$((i+1)):$expected:$actual:$error:$trip_duration:$miles_traveled:$receipts_amount")
-            
+
             successful_runs=$((successful_runs + 1))
-            
+
             # Check for exact match (within $0.01)
             if (( $(echo "$error < 0.01" | bc -l) )); then
                 exact_matches=$((exact_matches + 1))
             fi
-            
+
             # Check for close match (within $1.00)
             if (( $(echo "$error < 1.0" | bc -l) )); then
                 close_matches=$((close_matches + 1))
             fi
-            
+
             # Update total error
             total_error=$(echo "scale=10; $total_error + $error" | bc)
-            
+
             # Track maximum error
             if (( $(echo "$error > $max_error" | bc -l) )); then
                 max_error="$error"
                 max_error_case="Case $((i+1)): $trip_duration days, $miles_traveled miles, \$$receipts_amount receipts"
             fi
-            
+
         else
             errors_array+=("Case $((i+1)): Invalid output format: $output")
         fi
@@ -138,11 +138,11 @@ if [ $successful_runs -eq 0 ]; then
 else
     # Calculate average error
     avg_error=$(echo "scale=2; $total_error / $successful_runs" | bc)
-    
+
     # Calculate percentages
     exact_pct=$(echo "scale=1; $exact_matches * 100 / $successful_runs" | bc)
     close_pct=$(echo "scale=1; $close_matches * 100 / $successful_runs" | bc)
-    
+
     echo "✅ Evaluation Complete!"
     echo ""
     echo "📈 Results Summary:"
@@ -153,12 +153,12 @@ else
     echo "  Average error: \$${avg_error}"
     echo "  Maximum error: \$${max_error}"
     echo ""
-    
+
     # Calculate score (lower is better)
     score=$(echo "scale=2; $avg_error * 100 + ($num_cases - $exact_matches) * 0.1" | bc)
     echo "🎯 Your Score: $score (lower is better)"
     echo ""
-    
+
     # Provide feedback based on exact matches
     if [ $exact_matches -eq $num_cases ]; then
         echo "🏆 PERFECT SCORE! You have reverse-engineered the system completely!"
@@ -171,12 +171,12 @@ else
     else
         echo "📚 Keep analyzing the patterns in the interviews and test cases."
     fi
-    
+
     echo ""
     echo "💡 Tips for improvement:"
     if [ $exact_matches -lt $num_cases ]; then
         echo "  Check these high-error cases:"
-        
+
         # Sort results by error (descending) in memory and show top 5
         IFS=$'\n' high_error_cases=($(printf '%s\n' "${results_array[@]}" | sort -t: -k4 -nr | head -5))
         for result in "${high_error_cases[@]}"; do
